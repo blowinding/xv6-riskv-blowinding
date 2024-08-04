@@ -55,6 +55,8 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
+      // added for trace
+      p->trace_mask = 0;
   }
 }
 
@@ -311,6 +313,9 @@ fork(void)
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
+  
+  // added for trace
+  np->trace_mask = p->trace_mask;
 
   release(&np->lock);
 
@@ -377,6 +382,8 @@ exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+  // added for trace
+  p->trace_mask = 0;
 
   release(&wait_lock);
 
