@@ -6,6 +6,9 @@
 #include "spinlock.h"
 #include "proc.h"
 
+// add for sysinfo
+#include "sysinfo.h"
+
 uint64
 sys_exit(void)
 {
@@ -99,5 +102,22 @@ sys_trace(void)
   int mask;
   argint(0, &mask);
   myproc()->trace_mask = mask;
+  return 0;
+}
+
+// add for sysinfo
+uint64
+sys_sysinfo(void)
+{
+  uint64 info;
+  argaddr(0, &info);
+  struct sysinfo value;
+  if (info < MAXVA) {
+    value.freemem = kfreenum();
+    value.nproc   = procunused();
+  } else {
+    return -1;
+  }
+  copyout(myproc()->pagetable, info, (char*)&value, sizeof(struct sysinfo));
   return 0;
 }
