@@ -1,0 +1,29 @@
+1.Which other xv6 system call(s) could be made faster using this shared page? Explain how.
+  fstat, by saving files meta information in shared page
+  uptime, by saving last starting time in shared page
+2.For every leaf page in the vmprint output, explain what it logically contains and what its permission bits are. 
+Figure 3.4 in the xv6 book might be helpful, although note that the figure might have a slightly different set of pages than the init process that's being inspected here.
+  Page Directory Pointer Table (PDPT) Entry:
+  pte 0x0000000021fd9c01 pa 0x0000000087f67000
+  This entry points to the second-level page directory (PDP). The physical address of this PDP is 0x87f67000.
+  Page Directory (PD) Entries:
+  pte 0x0000000021fd9801 pa 0x0000000087f66000
+  This PD entry points to a third-level page table (PT). Its physical address is 0x87f66000.
+  pte 0x0000000021fda801 pa 0x0000000087f6a000
+  This PD entry also points to a PT. Its physical address is 0x87f6a000.
+  Page Table (PT) Entries:
+  pte 0x0000000021fda01b pa 0x0000000087f68000
+  This PT entry maps a virtual page to a physical page. The physical address is 0x87f68000. The permission bits are 0x1b which typically indicates read/write access (0x1) and user/supervisor access (0x10).
+  pte 0x0000000021fd9417 pa 0x0000000087f65000
+  This PT entry maps a virtual page to a physical page. The physical address is 0x87f65000. The permission bits are 0x17 which typically indicates read/write access (0x1) and no user access (0x00).
+  pte 0x0000000021fd9007 pa 0x0000000087f64000
+  This PT entry maps a virtual page to a physical page. The physical address is 0x87f64000. The permission bits are 0x07 which typically indicates read-only access (0x01) and no user access (0x00).
+  pte 0x0000000021fd8c17 pa 0x0000000087f63000
+  This PT entry maps a virtual page to a physical page. The physical address is 0x87f63000. The permission bits are 0x17 which typically indicates read/write access (0x1) and no user access (0x00).
+  Additional PT Entries:
+  pte 0x0000000021fdcc13 pa 0x0000000087f73000
+  This PT entry maps a virtual page to a physical page. The physical address is 0x87f73000. The permission bits are 0x13 which typically indicates read/write access (0x1) and no user access (0x00).
+  pte 0x0000000021fdd007 pa 0x0000000087f74000
+  This PT entry maps a virtual page to a physical page. The physical address is 0x87f74000. The permission bits are 0x07 which typically indicates read-only access (0x01) and no user access (0x00).
+  pte 0x0000000020001c0b pa 0x0000000080007000
+  This PT entry maps a virtual page to a physical page. The physical address is 0x80007000. The permission bits are 0x0b which typically indicates read-only access (0x01) and user/supervisor access (0x08).

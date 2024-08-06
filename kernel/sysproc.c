@@ -74,7 +74,16 @@ sys_sleep(void)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  uint64 va, mask;
+  int n;
+  argaddr(0, &va);
+  argint(1, &n);
+  argaddr(2, &mask);
+  if (n > MAXCHECKACC || va + n * PGSIZE > MAXVA || va > MAXVA) {
+    return -1;
+  }
+  pagetable_t pagetable = myproc()->pagetable;
+  pgaccess(pagetable, va, n, mask);
   return 0;
 }
 #endif

@@ -318,6 +318,25 @@ vmprint(pagetable_t pagetable)
   vmprint_(pagetable, 0);
 }
 
+// add for pgaccess
+// check process pgtb and clear access bit
+void
+pgaccess(pagetable_t pagetable, uint64 va, int n, uint64 mask)
+{
+  pte_t *pte;
+  char buf[MAXCHECKACC / 8];
+  memset(buf, 0, MAXCHECKACC / 8);
+  for (int i = 0; i < n; i++, va += PGSIZE)
+  {
+    pte = walk(pagetable, va, 0);
+    if (*pte & PTE_A) {
+      buf[i / 8] |= (1 << (i % 8));
+      *pte &= (~PTE_A);
+    }
+  }
+  copyout(pagetable, mask, buf, n / 8);
+}
+
 // Free user memory pages,
 // then free page-table pages.
 void
