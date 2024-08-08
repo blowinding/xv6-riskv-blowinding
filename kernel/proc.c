@@ -146,6 +146,11 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  // add for alarm
+  p->rtick = 0;
+  p->interval = 0;
+  p->isalarming = 0;
+
   return p;
 }
 
@@ -685,4 +690,20 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// add for alarm
+void
+registeralarm(int interval, uint64 handler)
+{
+  struct proc *p = myproc();
+  p->interval = interval;
+  p->rtick = interval;
+  p->handler = handler;
+}
+
+void
+copytrapframe(void *dst, void *src)
+{
+  memmove(dst, src, sizeof(struct trapframe));
 }

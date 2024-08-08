@@ -51,6 +51,9 @@ sys_sbrk(void)
 uint64
 sys_sleep(void)
 {
+  // add for backtrace
+  backtrace();
+  
   int n;
   uint ticks0;
 
@@ -90,4 +93,26 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+// add for alarm
+uint64
+sys_sigalarm(void)
+{
+  int interval;
+  uint64 handler;
+  argint(0, &interval);
+  argaddr(1, &handler);
+  registeralarm(interval, handler);
+  return 0;
+}
+
+// add for alarm
+uint64
+sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+  copytrapframe(p->trapframe, &p->temp);
+  p->isalarming = 0;
+  return 0;
 }
