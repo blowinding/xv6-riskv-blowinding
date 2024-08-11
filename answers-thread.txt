@@ -1,0 +1,18 @@
+Why are there missing keys with 2 threads, but not with 1 thread? Identify a sequence of events with 2 threads that can lead to a key being missing. Submit your sequence with a short explanation in answers-thread.txt.
+  since there is a race in inserting the hashtable
+  there is a sequence example that can lead to an error
+  when putting into hashtable, the varible 'i' is the same in different thread.
+  
+  entry->next->next->next
+    |
+   cur
+
+  newentry1->entry->next->next->next
+              |
+             cur
+
+  newentry1 dissapear
+  newentry2->entry->next->next->next
+              |
+             cur
+
