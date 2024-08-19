@@ -55,6 +55,8 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
+      // add for mmap
+      memset(p->vma_arr, 0, sizeof(struct vma) * MAXVMANUM);
   }
 }
 
@@ -169,6 +171,8 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  // add for mmap
+  memset(p->vma_arr, 0, sizeof(struct vma) * MAXVMANUM);
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -322,6 +326,9 @@ fork(void)
   np->state = RUNNABLE;
   release(&np->lock);
 
+  acquire(&np->lock);
+  memmove(np->vma_arr, p->vma_arr, sizeof(struct vma) * MAXVMANUM);
+  release(&np->lock);
   return pid;
 }
 
@@ -365,6 +372,14 @@ exit(int status)
   end_op();
   p->cwd = 0;
 
+  struct vma *vma_ptr = p->vma_arr;
+  for (int i = 0; i < MAXVMANUM; i++)
+  {
+    if (vma_ptr[i].start_va) {
+      freevma(vma_ptr + i, vma_ptr[i].start_va, vma_ptr[i].pgnum * PGSIZE);
+    }
+  }
+  
   acquire(&wait_lock);
 
   // Give any children to init.
@@ -685,4 +700,111 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// add for mmap debug
+void printvma() {
+  struct proc *p = myproc();
+  struct vma *vma_arr = p->vma_arr;
+  for (int i = 0; i < MAXVMANUM; i++)
+  {
+    printf("vma%d\n  start_va:%p, pgnum:%d\n", i, vma_arr[i].start_va, vma_arr[i].pgnum);
+  }
+}
+
+// add for mmap
+struct vma*
+findvma(uint64 start_va, uint64 len, int is_search) 
+{
+  struct proc *p = myproc();
+  struct vma *vma_arr = p->vma_arr;
+  uint64 end_va = MAPMAXVA;
+  int i = MAXVMANUM - 1;
+  for (; i >= 0; --i)
+  {
+    uint64 cur_start_va = vma_arr[i].start_va;
+    if (cur_start_va) {
+      if (cur_start_va % PGSIZE != 0) {
+        panic("findunusedva");
+      }
+      uint64 cur_end_va = cur_start_va + vma_arr[i].pgnum * PGSIZE;
+      if (start_va) {
+        if (start_va < cur_end_va && start_va >= cur_start_va) {
+          if (!is_search) {
+            panic("cannot remmap in one process");
+          } else {
+            return vma_arr + i;
+          }
+        }
+      } else {
+        if (is_search) {
+          panic("attempt finding 0");
+        } else {
+          end_va = cur_start_va;
+          break;
+        }
+      }
+    }
+  }
+  if (is_search) {
+    return 0;
+  }
+  start_va = PGROUNDDOWN(end_va - len);
+  if (walkaddr(p->pagetable, start_va) != 0 || i >= MAXVMANUM - 1) {
+    return 0;
+  }
+  struct vma *res = vma_arr + i + 1;
+  res->start_va = start_va;
+  return res;
+}
+
+void
+insertvma(struct vma* vma_ptr, uint64 len, int perm, int flag, long int offset, struct file *f)
+{
+  vma_ptr->pgnum = len / PGSIZE;
+  vma_ptr->perm = perm;
+  vma_ptr->flag = flag;
+  vma_ptr->f = f;
+  vma_ptr->offset = offset;
+}
+
+void
+freevma(struct vma* vma_ptr, uint64 addr, uint32 len)
+{
+  // assume unmap at the start or at the end
+  uint64 oldstart_va = vma_ptr->start_va;
+  uint64 rstart_va = PGROUNDDOWN(addr);
+  uint64 start_va;
+  uint64 oldpgnum = vma_ptr->pgnum;
+  uint64 rpgnum = PGROUNDUP(len) / PGSIZE;
+  uint64 pgnum;
+  
+  uint64 rbitset = vma_ptr->rbitset;
+  
+  uint64 off = (rstart_va - oldstart_va) / PGSIZE;
+  for (int i = 0; i < rpgnum; i++)
+  {
+    uint64 mask = 1 << (i + off);
+    if (rbitset & mask) {
+      uvmunmap(myproc()->pagetable, rstart_va + i * PGSIZE, 1, 1);
+      rbitset &= (~mask);
+    }
+  }
+  
+  if (oldstart_va == rstart_va) {
+    start_va = PGROUNDUP(rstart_va + len);
+    rbitset >>= rpgnum;
+  } else if (oldstart_va + oldpgnum * PGSIZE == rstart_va + rpgnum * PGSIZE) {
+    start_va = oldstart_va;
+  } else {
+    panic("assume unmap at the start or at the end");
+  }
+  pgnum = oldpgnum > rpgnum ? oldpgnum - rpgnum : 0;
+  if (pgnum == 0) {
+    memset(vma_ptr, 0, sizeof(struct vma));
+    return;
+  }
+  vma_ptr->start_va = start_va;
+  vma_ptr->pgnum = pgnum;
+  vma_ptr->rbitset = rbitset;
 }

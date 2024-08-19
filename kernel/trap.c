@@ -67,7 +67,24 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if (r_scause() == 12 || r_scause() == 13 || r_scause() == 15) {
+    struct vma *vma_ptr;
+    uint64 va = r_stval();
+    if ((vma_ptr = findvma(va, 0, 1)) == 0 || walkaddr(p->pagetable, va) != 0) {
+      goto err;
+    }
+    uint64 pa;
+    if ((pa = uvmvma(p->pagetable, va, vma_ptr->perm)) <= 0) {
+      goto err;
+    }
+    va = PGROUNDDOWN(va);
+    vma_ptr->rbitset |= (1 << (va - vma_ptr->start_va) / PGSIZE);
+    if (filereadvma(vma_ptr->f, pa, vma_ptr->offset + va - vma_ptr->start_va, PGSIZE) < 0) {
+      goto err;
+    }
+    
   } else {
+err:
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);

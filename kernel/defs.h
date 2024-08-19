@@ -12,6 +12,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct vma;
 #ifdef LAB_NET
 struct mbuf;
 struct sock;
@@ -41,6 +42,8 @@ void            fileinit(void);
 int             fileread(struct file*, uint64, int n);
 int             filestat(struct file*, uint64 addr);
 int             filewrite(struct file*, uint64, int n);
+int             filereadvma(struct file *f, uint64 addr, int offset, int n);
+int             filewritevma(struct file *f, uint64 addr, int offset, int n);
 
 // fs.c
 void            fsinit(int);
@@ -114,6 +117,10 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+struct vma*     findvma(uint64 start_va, uint64 len, int is_search);
+void            insertvma(struct vma* vma_ptr, uint64 len, int perm, int flag, long int offset, struct file *f);
+void            freevma(struct vma* vma_ptr, uint64 addr, uint32 len);
+void            printvma();
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -151,6 +158,8 @@ char*           strncpy(char*, const char*, int);
 void            argint(int, int*);
 int             argstr(int, char*, int);
 void            argaddr(int, uint64 *);
+void            argulong(int n, uint32 *ip);
+void            arglong(int n, long int *ip);
 int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
@@ -182,6 +191,7 @@ int             uvmcopy(pagetable_t, pagetable_t, uint64);
 void            uvmfree(pagetable_t, uint64);
 void            uvmunmap(pagetable_t, uint64, uint64, int);
 void            uvmclear(pagetable_t, uint64);
+uint64          uvmvma(pagetable_t pagetable, uint64 va, int perm);
 pte_t *         walk(pagetable_t, uint64, int);
 uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);

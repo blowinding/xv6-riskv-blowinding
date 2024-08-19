@@ -503,3 +503,55 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_mmap(void)
+{
+  // fetch args
+  uint64 addr;
+  uint32 len;
+  int prot, flags;
+  long int offset;
+  struct file *f;
+  argaddr(0, &addr);
+  argulong(1, &len);
+  argint(2, &prot);
+  argint(3, &flags);
+  if (argfd(4, 0, &f) < 0) {
+    return -1;
+  }
+  arglong(5, &offset);
+
+  // check map_share
+  if ((flags & MAP_SHARED) != 0 && !f->writable && (prot & PROT_WRITE)) {
+    return -1;
+  }
+  // fetch start va
+  struct vma *vma_ptr;
+  if ((vma_ptr = findvma(addr, len, 0)) == 0) {
+    return -1;
+  }
+  filedup(f);
+  insertvma(vma_ptr, len, prot, flags, offset, f);
+  // printvma();
+  return vma_ptr->start_va;
+}
+
+uint64
+sys_munmap(void)
+{
+  // fetch args
+  uint64 addr;
+  uint32 len;
+  argaddr(0, &addr);
+  argulong(1, &len);
+  struct vma *vma_ptr;
+  if((vma_ptr = findvma(addr, len, 1)) == 0) {
+    return -1;
+  }
+  if (vma_ptr->flag & MAP_SHARED)
+    filewritevma(vma_ptr->f, addr, addr - vma_ptr->start_va, len);
+  freevma(vma_ptr, addr, len);
+  // printvma();
+  return 0;
+}

@@ -352,6 +352,23 @@ uvmclear(pagetable_t pagetable, uint64 va)
   *pte &= ~PTE_U;
 }
 
+// add for mmap
+uint64
+uvmvma(pagetable_t pagetable, uint64 va, int perm)
+{
+  char *mem;
+  if ((mem = kalloc()) == 0) {
+    return 0;
+  }
+  memset(mem, 0, PGSIZE);
+  int pte_perm = perm << 1 | PTE_U;
+  if (mappages(pagetable, va, PGSIZE, (uint64)mem, pte_perm) != 0) {
+    kfree(mem);
+    return 0;
+  }
+  return (uint64)mem;
+}
+
 // Copy from kernel to user.
 // Copy len bytes from src to virtual address dstva in a given page table.
 // Return 0 on success, -1 on error.
