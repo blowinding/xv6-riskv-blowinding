@@ -328,6 +328,13 @@ fork(void)
 
   acquire(&np->lock);
   memmove(np->vma_arr, p->vma_arr, sizeof(struct vma) * MAXVMANUM);
+  struct vma *vma_ptr = np->vma_arr;
+  for (int i = 0; i < MAXVMANUM; i++)
+  {
+    if (vma_ptr[i].start_va) {
+      filedup(vma_ptr[i].f);
+    }
+  }
   release(&np->lock);
   return pid;
 }
@@ -801,6 +808,7 @@ freevma(struct vma* vma_ptr, uint64 addr, uint32 len)
   }
   pgnum = oldpgnum > rpgnum ? oldpgnum - rpgnum : 0;
   if (pgnum == 0) {
+    fileclose(vma_ptr->f);
     memset(vma_ptr, 0, sizeof(struct vma));
     return;
   }
